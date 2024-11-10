@@ -1,0 +1,108 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Latin Symbol Sudoku</title>
+        <link rel="stylesheet" href="static/styles.css">
+
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    </head>
+    <body>
+        <h1>Latin Symbol Sudoku</h1>
+        <form id="gridForm">
+            <label>Select Grid Size:</label>
+            <select name="grid_size" id="grid_size">
+                <option value="4">4x4</option>
+                <option value="6">6x6</option>
+                <option value="9">9x9</option>
+            </select>
+            <button type="submit">Start Game</button>
+        </form>
+        <div class="instructions">
+            <h2>Sudoku Game Instructions</h2>
+            <ol>
+                <li>Select the grid size (4x4, 6x6, or 9x9) from the dropdown menu.</li>
+                <li>Click the "Start Game" button to generate the Sudoku grid.</li>
+                <li>Fill in the empty cells with symbols (letters A-I for 9x9, A-F for 6x6, and A-D for 4x4).</li>
+                <li>Ensure that each row and column contains unique symbols.</li>
+                <li>Click the "Get Hint" button for help if you're stuck.</li>
+                <li>Once you think you've solved it, click the "Check Solution" button to verify your answers.</li>
+            </ol>
+            <p>Have fun and enjoy the challenge!</p>
+        </div>
+        {% if sudoku_grid %}
+            <table border="1">
+                {% for row in sudoku_grid %}
+                    <tr>
+                        {% for cell in row %}
+                            <td>
+                                <input type="text" maxlength="1" value="{{ cell }}" style="width: 20px; text-align: center;">
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+            <button id="hintButton">Get Hint</button>
+            <button id="checkSolutionButton">Check Solution</button>
+        {% endif %}
+
+        <div id="hintMessage"></div>
+        <div id="checkMessage"></div>
+
+        <script>
+            $('#gridForm').on('submit', function(e) {
+                e.preventDefault();
+                $.post('/start_game', $(this).serialize(), function(data) {
+                    $('body').html(data);
+                });
+            });
+
+            $('#hintButton').on('click', function() {
+                $.post('/get_hint', function(data) {
+                    $('#hintMessage').text(data.hint);
+                });
+            });
+
+            $('#checkSolutionButton').on('click', function() {
+                const gridData = [];
+                const size = parseInt($('#grid_size').val());  // Capture the selected grid size and ensure it's a number
+                console.log("Selected Grid Size:", size);  // Debugging output
+            
+                // Clear gridData and correctly construct the array for the selected size
+                $('input[type="text"]').each(function(index) {
+                    const row = Math.floor(index / size);  // Correct row calculation based on selected grid size
+                    const col = index % size;  // Column index within the row
+            
+                    // Only include the inputs that are part of the grid for the selected size
+                    if (row < size) {
+                        const value = $(this).val().toUpperCase();  // Ensure values are uppercase
+            
+                        if (!gridData[row]) {
+                            gridData[row] = [];  // Initialize the row if it doesn't exist yet
+                        }
+            
+                        gridData[row][col] = value;  // Assign the value to the correct row and column
+                    }
+                });
+            
+                console.log("Constructed Grid Data:", gridData);  // Debugging output
+            
+                // Send grid data to server
+                $.ajax({
+                    url: '/check_solution',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ user_grid: gridData, grid_size: size }),  // Send grid size and data
+                    success: function(data) {
+                        $('#checkMessage').text(data.message);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Request Failed:", error);  // Output error to console
+                        $('#checkMessage').text('An error occurred: ' + error);
+                    }
+                });
+            });
+        </script>
+    </body>
+    </html>
